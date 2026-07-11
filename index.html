@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Metode Numerik - Interpolasi dengan Galat Mutlak</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .table-container {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800 min-h-screen">
+
+    <header class="bg-blue-700 text-white p-6 shadow-md text-center">
+        <h1 class="text-2xl md:text-3xl font-bold uppercase tracking-wide">Kalkulator Metode Numerik</h1>
+        <p class="text-blue-100 text-sm md:text-base mt-1">Interpolasi Polinomial & Analisis Galat Mutlak (Kelompok 6)</p>
+    </header>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- PANEL INPUT (KIRI) -->
+        <section class="lg:col-span-5 bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-fit">
+            <h2 class="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                📥 Input Titik Data (x, y)
+            </h2>
+            
+            <div class="table-container border border-gray-200 rounded mb-4">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200">
+                            <th class="p-3 text-xs font-semibold text-gray-600 text-center w-12">i</th>
+                            <th class="p-3 text-xs font-semibold text-gray-600">Nilai X</th>
+                            <th class="p-3 text-xs font-semibold text-gray-600">Nilai Y = f(X)</th>
+                            <th class="p-3 text-xs font-semibold text-gray-600 text-center w-16">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inputTableBody">
+                        <tr class="border-b border-gray-100">
+                            <td class="p-3 text-sm text-center text-gray-500 font-medium row-index">0</td>
+                            <td class="p-2"><input type="number" step="any" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 in-x" placeholder="Contoh: 1"></td>
+                            <td class="p-2"><input type="number" step="any" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 in-y" placeholder="Contoh: 3"></td>
+                            <td class="p-2 text-center"><button onclick="deleteRow(this)" class="text-red-500 hover:text-red-700 font-semibold text-sm">Hapus</button></td>
+                        </tr>
+                        <tr class="border-b border-gray-100">
+                            <td class="p-3 text-sm text-center text-gray-500 font-medium row-index">1</td>
+                            <td class="p-2"><input type="number" step="any" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 in-x" placeholder="Contoh: 2"></td>
+                            <td class="p-2"><input type="number" step="any" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 in-y" placeholder="Contoh: 7"></td>
+                            <td class="p-2 text-center"><button onclick="deleteRow(this)" class="text-red-500 hover:text-red-700 font-semibold text-sm">Hapus</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <button onclick="addRow()" class="w-full py-2 bg-gray-100 text-gray-700 border border-dashed border-gray-300 font-medium text-sm rounded hover:bg-gray-200 transition-colors mb-6">
+                + Tambah Baris Data
+            </button>
+
+            <div class="mb-6">
+                <label class="block text-sm font-semibold text-gray-700 mb-2">⚙️ Pilih Metode Interpolasi:</label>
+                <div class="space-y-2">
+                    <label class="flex items-center space-x-2 p-2 bg-gray-50 rounded border border-gray-200 cursor-pointer hover:bg-gray-100">
+                        <input type="radio" name="method" value="lagrange" checked class="text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm font-medium">Polinom Lagrange</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-gray-50 rounded border border-gray-200 cursor-pointer hover:bg-gray-100">
+                        <input type="radio" name="method" value="newton" class="text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm font-medium">Polinom Newton (Selisih-Terbagi)</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-gray-50 rounded border border-gray-200 cursor-pointer hover:bg-gray-100">
+                        <input type="radio" name="method" value="gregory-maju" class="text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm font-medium">Polinom Newton-Gregory Maju</span>
+                    </label>
+                    <label class="flex items-center space-x-2 p-2 bg-gray-50 rounded border border-gray-200 cursor-pointer hover:bg-gray-100">
+                        <input type="radio" name="method" value="gregory-mundur" class="text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm font-medium">Polinom Newton-Gregory Mundur</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Titik Target (x*)</label>
+                    <input type="number" id="xTarget" step="any" placeholder="Misal: 3" class="w-full p-2.5 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 uppercase mb-1">Nilai Sejati f(x*)</label>
+                    <input type="number" id="xTrueValue" step="any" placeholder="Opsional" class="w-full p-2.5 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 font-medium">
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="calculate()" class="flex-1 py-3 bg-blue-600 text-white font-bold text-sm rounded shadow hover:bg-blue-700 transition-colors">
+                    HITUNG NILAI
+                </button>
+                <button onclick="location.reload()" class="px-4 py-3 bg-gray-500 text-white font-bold text-sm rounded shadow hover:bg-gray-600 transition-colors">
+                    RESET
+                </button>
+            </div>
+        </section>
+
+        <!-- PANEL HASIL & GRAFIK (KANAN) -->
+        <section class="lg:col-span-7 space-y-6">
+            
+            <!-- BLOK KOTAK JAWABAN UTAMA -->
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Hasil Interpolasi P(x*)</p>
+                    <p id="outputResult" class="text-3xl font-extrabold text-blue-900 mt-1">-</p>
+                </div>
+                <div class="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Galat Mutlak (True Error)</p>
+                    <p id="outputError" class="text-3xl font-extrabold text-emerald-900 mt-1">-</p>
+                </div>
+            </div>
+
+            <!-- BLOK TABEL MATRIKS PROSES PROSES -->
+            <div id="stepTableArea" class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
+                <h3 id="stepTableTitle" class="text-base font-bold text-gray-700 mb-3">Tabel Proses Selisih</h3>
+                <div class="overflow-x-auto border border-gray-200 rounded mb-4">
+                    <table class="w-full text-left border-collapse">
+                        <thead id="stepTableHead"></thead>
+                        <tbody id="stepTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- BLOK LANGKAH JALANNYA CARA PENGERJAAN RUMUS -->
+            <div id="formulaStepsArea" class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hidden">
+                <h3 class="text-base font-bold text-gray-700 mb-2">📝 Langkah Penyelesaian Rumus</h3>
+                <div id="formulaStepsBody" class="bg-gray-50 p-4 rounded border border-gray-200 font-mono text-xs text-gray-700 space-y-3 whitespace-pre-wrap leading-relaxed">
+                </div>
+            </div>
+
+            <!-- BLOK GRAFIK KANVAS -->
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h3 class="text-base font-bold text-gray-700 mb-3">📈 Visualisasi Kurva Interpolasi</h3>
+                <div class="w-full" style="height: 320px;">
+                    <canvas id="chartCanvas"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- PANEL FITUR MANUAL USER (POIN 3.e) -->
+        <section class="lg:col-span-12 bg-gradient-to-r from-slate-800 to-slate-900 text-white p-6 rounded-lg shadow-md border border-slate-700 mt-2">
+            <h2 class="text-lg font-bold mb-4 flex items-center gap-2 text-amber-400">
+                📖 USER MANUAL (Panduan Pengoperasian Aplikasi)
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-300">
+                <div>
+                    <h3 class="font-bold text-white mb-2 flex items-center gap-1"><span class="bg-amber-400 text-slate-950 w-5 h-5 rounded-full inline-flex items-center justify-center font-extrabold">1</span> Input Titik Koordinat</h3>
+                    <p>Masukkan koordinat data pada kolom <strong>Nilai X</strong> dan <strong>Nilai Y</strong>. Gunakan tombol <span class="text-white underline">+ Tambah Baris Data</span> untuk menambah titik, atau <span class="text-red-400">Hapus</span> jika ingin mengurangi baris.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-white mb-2 flex items-center gap-1"><span class="bg-amber-400 text-slate-950 w-5 h-5 rounded-full inline-flex items-center justify-center font-extrabold">2</span> Target &amp; Metode</h3>
+                    <p>Pilih salah satu metode interpolasi yang diinginkan. Masukkan nilai <strong>Titik Target (x*)</strong> yang ingin dicari nilai pendekatannya, serta <strong>Nilai Sejati f(x*)</strong> (jika ada) untuk memunculkan nilai Galat Mutlak.</p>
+                </div>
+                <div>
+                    <h3 class="font-bold text-white mb-2 flex items-center gap-1"><span class="bg-amber-400 text-slate-950 w-5 h-5 rounded-full inline-flex items-center justify-center font-extrabold">3</span> Hasil &amp; Analisis</h3>
+                    <p>Klik tombol <span class="bg-blue-600 text-white px-1.5 py-0.5 rounded text-xs">HITUNG NILAI</span>. Sistem akan menampilkan hasil interpolasi, matriks tabel proses selisih, rincian runtunan rumus langkah kerja, dan visualisasi grafik plot fungsi.</p>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-700 text-xs text-amber-300/80">
+                *Catatan Khusus: Metode Newton-Gregory (Maju/Mundur) memerlukan spasi antar koordinat X yang seragam (h konstan) agar perhitungan dapat dieksekusi secara valid oleh sistem.
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        let chartInstance = null;
+
+        function addRow() {
+            let tbody = document.getElementById('inputTableBody');
+            let size = tbody.rows.length;
+            let tr = document.createElement('tr');
+            tr.className = "border-b border-gray-100";
+            tr.innerHTML = `
+                <td class="p-3 text-sm text-center text-gray-500 font-medium row-index">${size}</td>
+                <td class="p-2"><input type="number" step="any" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 in-x"></td>
+                <td class="p-2"><input type="number" step="any" class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 in-y"></td>
+                <td class="p-2 text-center"><button onclick="deleteRow(this)" class="text-red-500 hover:text-red-700 font-semibold text-sm">Hapus</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function deleteRow(btn) {
+            btn.closest('tr').remove();
+            let rows = document.getElementById('inputTableBody').rows;
+            for (let i = 0; i < rows.length; i++) {
+                rows[i].querySelector('.row-index').innerText = i;
+            }
+        }
+
+        // ==================== CORE ALGORITMA METNUM & STRINGS CARA JALANNYA ====================
+
+        function interpolateLagrange(points, xTarget) {
+            let n = points.length;
+            let result = 0;
+            let stepsTxt = " RUMUS POLINOM LAGRANGE:\n P_n(x) = Σ (L_i(x) * Y_i)\n\n";
+            let sumTerms = [];
+
+            for (let i = 0; i < n; i++) {
+                let numStr = "";
+                let denStr = "";
+                let p = 1;
+                for (let j = 0; j < n; j++) {
+                    if (i !== j) {
+                        p = p * (xTarget - points[j].x) / (points[i].x - points[j].x);
+                        numStr += `(${xTarget} - ${points[j].x})`;
+                        denStr += `(${points[i].x} - ${points[j].x})`;
+                    }
+                }
+                let liValue = p;
+                let termVal = points[i].y * liValue;
+                result += termVal;
+
+                stepsTxt += ` L_${i}(x) = ${numStr} / ${denStr}\n`;
+                stepsTxt += `        = ${liValue.toFixed(5)}\n`;
+                stepsTxt += ` Suku_${i} = L_${i}(x) * Y_${i} = ${liValue.toFixed(5)} * ${points[i].y} = ${termVal.toFixed(5)}\n\n`;
+                sumTerms.push(termVal.toFixed(5));
+            }
+
+            stepsTxt += ` MAKA HASIL AKHIR:\n P(${xTarget}) = ${sumTerms.join(" + ")}\n         = ${result.toFixed(6)}`;
+            return { result: result, stepsHtml: stepsTxt };
+        }
+
+        function interpolateNewton(points, xTarget) {
+            let n = points.length;
+            let st = Array.from({ length: n }, () => Array(n).fill(0));
+            for (let i = 0; i < n; i++) st[i][0] = points[i].y;
+
+            for (let j = 1; j < n; j++) {
+                for (let i = 0; i < n - j; i++) {
+                    st[i][j] = (st[i+1][j-1] - st[i][j-1]) / (points[i+j].x - points[i].x);
+                }
+            }
+
+            let result = st[0][0];
+            let stepsTxt = " RUMUS POLINOM NEWTON (SELISIH-TERBAGI):\n P_n(x) = a_0 + a_1(x-x_0) + a_2(x-x_0)(x-x_1) + ...\n\n";
+            stepsTxt += ` Koefisien Basis (Baris Atas Tabel ST):\n`;
+            for(let j=0; j<n; j++) {
+                stepsTxt += `  a_${j} = ${st[0][j].toFixed(5)}\n`;
+            }
+            stepsTxt += `\n PENGERJAAN SUBSTITUSI TITIK TARGET:\n`;
+            stepsTxt += ` Suku_0 = a_0 = ${st[0][0].toFixed(5)}\n`;
+
+            let factor = 1;
+            let sumStr = `${st[0][0].toFixed(5)}`;
+            
+            for (let i = 1; i < n; i++) {
+                let prevFactorStr = "";
+                for(let k=0; k<i; k++) {
+                    prevFactorStr += `(${xTarget} - ${points[k].x})`;
+                }
+                factor = factor * (xTarget - points[i-1].x);
+                let termVal = st[0][i] * factor;
+                result += termVal;
+
+                stepsTxt += ` Suku_${i} = a_${i} * ${prevFactorStr}\n`;
+                stepsTxt += `        = ${st[0][i].toFixed(5)} * ${factor.toFixed(5)} = ${termVal.toFixed(5)}\n`;
+                sumStr += ` + (${termVal.toFixed(5)})`;
+            }
+
+            stepsTxt += `\n MAKA HASIL AKHIR:\n P(${xTarget}) = ${sumStr}\n         = ${result.toFixed(6)}`;
+            return { result: result, table: st, stepsHtml: stepsTxt };
+        }
+
+        function factorial(num) {
+            if (num <= 1) return 1;
+            return num * factorial(num - 1);
+        }
+
+        function interpolateNewtonGregoryMaju(points, xTarget) {
+            let n = points.length;
+            let h = points[1].x - points[0].x;
+            let s = (xTarget - points[0].x) / h;
+            
+            let delta = Array.from({ length: n }, () => Array(n).fill(0));
+            for (let i = 0; i < n; i++) delta[i][0] = points[i].y;
+
+            for (let j = 1; j < n; j++) {
+                for (let i = 0; i < n - j; i++) {
+                    delta[i][j] = delta[i+1][j-1] - delta[i][j-1];
+                }
+            }
+
+            let result = delta[0][0];
+            let stepsTxt = " RUMUS NEWTON-GREGORY MAJU:\n P_n(x) = f(x_0) + s*Δf_0 + [s(s-1)/2!]*Δ²f_0 + ...\n\n";
+            stepsTxt += ` Parameter Interval Jarak (h) = ${h.toFixed(5)}\n`;
+            stepsTxt += ` Basis Awal (x_0) = ${points[0].x}\n`;
+            stepsTxt += ` Nilai s = (x* - x_0) / h = (${xTarget} - ${points[0].x}) / ${h} = ${s.toFixed(5)}\n\n`;
+            stepsTxt += ` Koefisien Δ Basis (Baris Pertama Tabel):\n`;
+            for(let j=0; j<n; j++) {
+                stepsTxt += `  Δ^${j} f_0 = ${delta[0][j].toFixed(5)}\n`;
+            }
+            
+            stepsTxt += `\n JALANNYA HITUNGAN SUKU:\n`;
+            stepsTxt += ` Suku_0 = f(x_0) = ${delta[0][0].toFixed(5)}\n`;
+            let sumStr = `${delta[0][0].toFixed(5)}`;
+
+            for (let k = 1; k < n; k++) {
+                let sTerm = 1;
+                let sTermStr = "";
+                for (let i = 0; i < k; i++) {
+                    sTerm = sTerm * (s - i);
+                    sTermStr += `(${s.toFixed(2)} - ${i})`;
+                }
+                let factVal = factorial(k);
+                let termVal = (sTerm * delta[0][k]) / factVal;
+                result += termVal;
+
+                stepsTxt += ` Suku_${k} = [ ${sTermStr} / ${k}! ] * Δ^${k}\n`;
+                stepsTxt += `        = [ ${sTerm.toFixed(5)} / ${factVal} ] * ${delta[0][k].toFixed(5)} = ${termVal.toFixed(5)}\n`;
+                sumStr += ` + (${termVal.toFixed(5)})`;
+            }
+
+            stepsTxt += `\n MAKA HASIL AKHIR:\n P(${xTarget}) = ${sumStr}\n         = ${result.toFixed(6)}`;
+            return { result: result, table: delta, stepsHtml: stepsTxt };
+        }
+
+        function interpolateNewtonGregoryMundur(points, xTarget) {
+            let n = points.length;
+            let h = points[1].x - points[0].x;
+            let xn = points[n - 1].x; 
+            let s = (xTarget - xn) / h;
+            
+            let nabla = Array.from({ length: n }, () => Array(n).fill(0));
+            for (let i = 0; i < n; i++) nabla[i][0] = points[i].y;
+
+            for (let j = 1; j < n; j++) {
+                for (let i = j; i < n; i++) {
+                    nabla[i][j] = nabla[i][j - 1] - nabla[i - 1][j - 1];
+                }
+            }
+
+            let result = nabla[n - 1][0];
+            let stepsTxt = " RUMUS NEWTON-GREGORY MUNDUR:\n P_n(x) = f(x_n) + s*∇f_n + [s(s+1)/2!]*∇²f_n + ...\n\n";
+            stepsTxt += ` Parameter Interval Jarak (h) = ${h.toFixed(5)}\n`;
+            stepsTxt += ` Basis Akhir (x_n) = ${xn}\n`;
+            stepsTxt += ` Nilai s = (x* - x_n) / h = (${xTarget} - ${xn}) / ${h} = ${s.toFixed(5)}\n\n`;
+            stepsTxt += ` Koefisien ∇ Basis Mundur (Baris Terakhir Tabel):\n`;
+            for(let j=0; j<n; j++) {
+                stepsTxt += `  ∇^${j} f_n = ${nabla[n-1][j].toFixed(5)}\n`;
+            }
+
+            stepsTxt += `\n JALANNYA HITUNGAN SUKU:\n`;
+            stepsTxt += ` Suku_0 = f(x_n) = ${nabla[n - 1][0].toFixed(5)}\n`;
+            let sumStr = `${nabla[n - 1][0].toFixed(5)}`;
+
+            for (let k = 1; k < n; k++) {
+                let sTerm = 1;
+                let sTermStr = "";
+                for (let i = 0; i < k; i++) {
+                    sTerm = sTerm * (s + i); 
+                    sTermStr += `(${s.toFixed(2)} + ${i})`;
+                }
+                let factVal = factorial(k);
+                let termVal = (sTerm * nabla[n - 1][k]) / factVal;
+                result += termVal;
+
+                stepsTxt += ` Suku_${k} = [ ${sTermStr} / ${k}! ] * ∇^${k}\n`;
+                stepsTxt += `        = [ ${sTerm.toFixed(5)} / ${factVal} ] * ${nabla[n - 1][k].toFixed(5)} = ${termVal.toFixed(5)}\n`;
+                sumStr += ` + (${termVal.toFixed(5)})`;
+            }
+
+            stepsTxt += `\n MAKA HASIL AKHIR:\n P(${xTarget}) = ${sumStr}\n         = ${result.toFixed(6)}`;
+            return { result: result, table: nabla, stepsHtml: stepsTxt };
+        }
+
+        // ==================== KONTROL UTAMA & PROSES ====================
+
+        function calculate() {
+            let inX = document.getElementsByClassName('in-x');
+            let inY = document.getElementsByClassName('in-y');
+            let points = [];
+
+            for (let i = 0; i < inX.length; i++) {
+                if (inX[i].value !== "" && inY[i].value !== "") {
+                    points.push({
+                        x: parseFloat(inX[i].value),
+                        y: parseFloat(inY[i].value)
+                    });
+                }
+            }
+
+            if (points.length < 2) {
+                alert("Mohon masukkan minimal 2 pasang titik koordinat data!");
+                return;
+            }
+
+            let xTargetInput = document.getElementById('xTarget').value;
+            if (xTargetInput === "") {
+                alert("Mohon masukkan nilai Titik Target (x*) terlebih dahulu!");
+                return;
+            }
+            let xTarget = parseFloat(xTargetInput);
+            let method = document.querySelector('input[name="method"]:checked').value;
+            
+            let finalResult = 0;
+            let tableData = null;
+            let txtCaraKerja = "";
+
+            // Validasi spasi h seragam untuk Newton-Gregory
+            if (method === 'gregory-maju' || method === 'gregory-mundur') {
+                let hBase = points[1].x - points[0].x;
+                for (let i = 1; i < points.length - 1; i++) {
+                    let hNext = points[i+1].x - points[i].x;
+                    if (Math.abs(hNext - hBase) > 0.00001) {
+                        alert("⚠️ Error: Jarak spasi koordinat X tidak seragam! Metode Newton-Gregory membutuhkan data dengan interval h yang konstan.");
+                        return;
+                    }
+                }
+            }
+
+            // Pemrosesan pilihan radio
+            if (method === 'lagrange') {
+                let calc = interpolateLagrange(points, xTarget);
+                finalResult = calc.result;
+                txtCaraKerja = calc.stepsHtml;
+                document.getElementById('stepTableArea').classList.add('hidden');
+            } else if (method === 'newton') {
+                let calc = interpolateNewton(points, xTarget);
+                finalResult = calc.result;
+                tableData = calc.table;
+                txtCaraKerja = calc.stepsHtml;
+                renderStepTable(points, tableData, 'newton');
+            } else if (method === 'gregory-maju') {
+                let calc = interpolateNewtonGregoryMaju(points, xTarget);
+                finalResult = calc.result;
+                tableData = calc.table;
+                txtCaraKerja = calc.stepsHtml;
+                renderStepTable(points, tableData, 'gregory-maju');
+            } else if (method === 'gregory-mundur') {
+                let calc = interpolateNewtonGregoryMundur(points, xTarget);
+                finalResult = calc.result;
+                tableData = calc.table;
+                txtCaraKerja = calc.stepsHtml;
+                renderStepTable(points, tableData, 'gregory-mundur');
+            }
+
+            // Render Output Angka Utama
+            document.getElementById('outputResult').innerText = finalResult.toFixed(6);
+
+            // Render Kotak Teks Cara Kerja Rumus
+            document.getElementById('formulaStepsArea').classList.remove('hidden');
+            document.getElementById('formulaStepsBody').innerText = txtCaraKerja;
+
+            let trueValueInput = document.getElementById('xTrueValue').value;
+            if (trueValueInput !== "") {
+                let trueVal = parseFloat(trueValueInput);
+                let absoluteError = Math.abs(trueVal - finalResult);
+                document.getElementById('outputError').innerText = absoluteError.toFixed(6);
+            } else {
+                document.getElementById('outputError').innerText = "N/A";
+            }
+
+            updateChartVisual(points, xTarget, finalResult, method);
+        }
+
+        function renderStepTable(points, table, method) {
+            let area = document.getElementById('stepTableArea');
+            let head = document.getElementById('stepTableHead');
+            let body = document.getElementById('stepTableBody');
+            let title = document.getElementById('stepTableTitle');
+            
+            area.classList.remove('hidden');
+            body.innerHTML = '';
+            let n = points.length;
+
+            let headerHtml = `<th class="p-3 text-xs font-semibold text-gray-600 border bg-gray-50 text-center">X_i</th>`;
+            headerHtml += `<th class="p-3 text-xs font-semibold text-gray-600 border bg-gray-50 text-center">Y_i</th>`;
+
+            if (method === 'newton') {
+                title.innerText = '📐 Tabel Selisih-Terbagi (Polinom Newton)';
+                for (let j = 1; j < n; j++) headerHtml += `<th class="p-3 text-xs font-semibold text-gray-600 border bg-gray-50 text-center">ST-${j}</th>`;
+            } else if (method === 'gregory-maju') {
+                title.innerText = '📐 Tabel Selisih Maju (Newton-Gregory Maju)';
+                for (let j = 1; j < n; j++) headerHtml += `<th class="p-3 text-xs font-semibold text-gray-600 border bg-gray-50 text-center">&Delta;<sup>${j}</sup></th>`;
+            } else if (method === 'gregory-mundur') {
+                title.innerText = '📐 Tabel Selisih Mundur (Newton-Gregory Mundur)';
+                for (let j = 1; j < n; j++) headerHtml += `<th class="p-3 text-xs font-semibold text-gray-600 border bg-gray-50 text-center">&nabla;<sup>${j}</sup></th>`;
+            }
+            head.innerHTML = `<tr>${headerHtml}</tr>`;
+
+            for (let i = 0; i < n; i++) {
+                let isHighlighted = (method === 'gregory-mundur') ? (i === n - 1) : (i === 0);
+                let rowClass = isHighlighted ? 'bg-amber-50 font-bold text-amber-800' : 'text-gray-700 border-b border-gray-100';
+                
+                let rowHtml = `<td class="p-3 border text-center text-sm font-medium">${points[i].x}</td>`;
+                
+                for (let j = 0; j < n; j++) {
+                    if (method === 'gregory-mundur') {
+                        if (j <= i) {
+                            rowHtml += `<td class="p-3 border text-center text-sm">${table[i][j].toFixed(5)}</td>`;
+                        } else {
+                            rowHtml += `<td class="p-3 border text-center text-sm text-gray-300">-</td>`;
+                        }
+                    } else {
+                        if (j < n - i) {
+                            rowHtml += `<td class="p-3 border text-center text-sm">${table[i][j].toFixed(5)}</td>`;
+                        } else {
+                            rowHtml += `<td class="p-3 border text-center text-sm text-gray-300">-</td>`;
+                        }
+                    }
+                }
+                body.innerHTML += `<tr class="${rowClass}">${rowHtml}</tr>`;
+            }
+        }
+
+        function updateChartVisual(points, xTarget, yTarget, method) {
+            let sortedPoints = [...points].sort((a, b) => a.x - b.x);
+            let minX = sortedPoints[0].x, maxX = sortedPoints[sortedPoints.length - 1].x;
+            let padding = (maxX - minX) * 0.15 || 1.0;
+            let curveData = [];
+            let steps = 80;
+            let startX = minX - padding, endX = maxX + padding;
+            let interval = (endX - startX) / steps;
+
+            for (let i = 0; i <= steps; i++) {
+                let curX = startX + (i * interval);
+                let curY = 0;
+                if (method === 'lagrange') curY = interpolateLagrange(points, curX).result;
+                else if (method === 'newton') curY = interpolateNewton(points, curX).result;
+                else if (method === 'gregory-maju') curY = interpolateNewtonGregoryMaju(points, curX).result;
+                else if (method === 'gregory-mundur') curY = interpolateNewtonGregoryMundur(points, curX).result;
+                curveData.push({ x: curX, y: curY });
+            }
+
+            chartInstance.data.datasets = [
+                { label: 'Kurva Polinom', data: curveData, type: 'line', borderColor: '#1d4ed8', borderWidth: 2, pointRadius: 0, fill: false },
+                { label: 'Titik Data', data: points, backgroundColor: '#dc2626', pointRadius: 5 },
+                { label: 'Target x*', data: [{ x: xTarget, y: yTarget }], backgroundColor: '#2563eb', pointRadius: 8, pointStyle: 'rectRot' }
+            ];
+            chartInstance.update();
+        }
+
+        window.onload = function() {
+            let ctx = document.getElementById('chartCanvas').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { type: 'linear', position: 'bottom' }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
